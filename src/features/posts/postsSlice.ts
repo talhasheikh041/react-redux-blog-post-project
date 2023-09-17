@@ -3,12 +3,22 @@ import {
   createSlice,
   createAsyncThunk,
   createSelector,
+  createEntityAdapter,
+  EntityState,
+  EntityAdapter,
 } from "@reduxjs/toolkit"
 import axios, { isAxiosError } from "axios"
 import { RootStateType } from "../../app/store"
 import { sub } from "date-fns"
 
 const POSTS_URL = "https://jsonplaceholder.typicode.com/posts"
+
+const postsAdapter: EntityAdapter<PostStateType> = createEntityAdapter({
+  sortComparer: (a: PostStateType, b: PostStateType) =>
+    b.date.localeCompare(a.date),
+})
+
+console.log(postsAdapter.getInitialState())
 
 type ReactionsType = {
   thumbsUp: number
@@ -28,18 +38,24 @@ export type PostStateType = {
 }
 
 type InitialStateType = {
-  posts: PostStateType[]
   status: "idle" | "loading" | "succeeded" | "failed"
   error: string | null
   count: number
 }
 
-const initialState: InitialStateType = {
-  posts: [],
-  status: "idle",
-  error: "",
-  count: 0,
-}
+const initialState: EntityState<PostStateType> & InitialStateType =
+  postsAdapter.getInitialState({
+    status: "idle",
+    error: "",
+    count: 0,
+  })
+
+// const initialState: InitialStateType = {
+//   posts: [],
+//   status: "idle",
+//   error: "",
+//   count: 0,
+// }
 
 export const fetchPosts = createAsyncThunk("posts/fetchPosts", async () => {
   try {
@@ -102,7 +118,7 @@ const postsSlice = createSlice({
       action: PayloadAction<{ postId: number; reaction: string }>
     ) => {
       const { postId, reaction } = action.payload
-      const existingPost = state.posts.find((post) => post.id === postId)
+      const existingPost = state.entities[postId]
       if (existingPost) {
         existingPost.reactions[reaction as keyof ReactionsType]++
       }
@@ -130,7 +146,8 @@ const postsSlice = createSlice({
             return post
           })
 
-          state.posts = state.posts.concat(loadedPosts)
+          // state.posts = state.posts.concat(loadedPosts)
+          postsAdapter.upsertMany(state, loadedPosts)
         }
       )
       .addCase(fetchPosts.rejected, (state, action) => {
@@ -152,7 +169,8 @@ const postsSlice = createSlice({
             rocket: 0,
             coffee: 0,
           }
-          state.posts.push(action.payload)
+          // state.posts.push(action.payload)
+          postsAdapter.addOne(state, action.payload)
         }
       )
       .addCase(
@@ -163,10 +181,11 @@ const postsSlice = createSlice({
             console.log(action.payload)
             return
           }
-          const { id } = action.payload
-          const otherPosts = state.posts.filter((post) => post.id !== id)
           action.payload.date = new Date().toISOString()
-          state.posts = [...otherPosts, action.payload]
+          // const { id } = action.payload
+          // const otherPosts = state.posts.filter((post) => post.id !== id)
+          // state.posts = [...otherPosts, action.payload]
+          postsAdapter.upsertOne(state, action.payload)
         }
       )
       .addCase(
@@ -185,21 +204,28 @@ const postsSlice = createSlice({
               return
             }
             const { id } = action.payload
-            const posts = state.posts.filter((post) => post.id !== id)
-            state.posts = posts
+            // const posts = state.posts.filter((post) => post.id !== id)
+            // state.posts = posts
+            postsAdapter.removeOne(state, id)
           }
         }
       )
   },
 })
 
-export const selectAllPosts = (state: RootStateType) => state.posts.posts
+export const {
+  selectAll: selectAllPosts,
+  selectById: selectPostById,
+  selectIds: selectPostIds,
+} = postsAdapter.getSelectors((state: RootStateType) => state.posts)
+
+// export const selectAllPosts = (state: RootStateType) => state.posts.posts
 export const getPostsError = (state: RootStateType) => state.posts.error
 export const getPostsStatus = (state: RootStateType) => state.posts.status
 export const getCount = (state: RootStateType) => state.posts.count
 
-export const selectPostById = (state: RootStateType, postId: number) =>
-  state.posts.posts.find((post) => post.id === postId)
+// export const selectPostById = (state: RootStateType, postId: number) =>
+//   state.posts.posts.find((post) => post.id === postId)
 
 export const selectPostsByUser = createSelector(
   [selectAllPosts, (_: RootStateType, userId: number) => userId],

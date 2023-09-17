@@ -1,11 +1,11 @@
 import useAppSelector from "../../hooks/useAppSelector"
 
-import { selectAllPosts, getPostsError, getPostsStatus } from "./postsSlice"
+import { selectPostIds, getPostsError, getPostsStatus } from "./postsSlice"
 
 import PostsExcerpt from "./PostsExcerpt"
 
 const PostsList = () => {
-  const posts = useAppSelector(selectAllPosts)
+  const orderedPostsIds = useAppSelector(selectPostIds)
   const postStatus = useAppSelector(getPostsStatus)
   const error = useAppSelector(getPostsError)
 
@@ -34,12 +34,8 @@ const PostsList = () => {
       </svg>
     )
   } else if (postStatus === "succeeded") {
-    const orderedPosts = posts
-      .slice()
-      .sort((a, b) => b.date.localeCompare(a.date))
-
-    content = orderedPosts.map((post) => (
-      <PostsExcerpt key={post.id} post={post} />
+    content = orderedPostsIds.map((postId) => (
+      <PostsExcerpt key={postId} postId={postId} />
     ))
   } else if (postStatus === "failed") {
     content = <p>{error}</p>

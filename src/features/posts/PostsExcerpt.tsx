@@ -1,15 +1,19 @@
+import { EntityId } from "@reduxjs/toolkit"
 import PostAuthor from "./PostAuthor"
 import ReactionButtons from "./ReactionButtons"
 import TimeAgo from "./TimeAgo"
-import { PostStateType } from "./postsSlice"
+import { selectPostById } from "./postsSlice"
 
 import { Link } from "react-router-dom"
+import useAppSelector from "../../hooks/useAppSelector"
 
 type PropsType = {
-  post: PostStateType
+  postId: EntityId
 }
 
-const PostsExcerpt = ({ post }: PropsType) => {
+const PostsExcerpt = ({ postId }: PropsType) => {
+  const post = useAppSelector((state) => selectPostById(state, postId))!
+
   return (
     <article className="border mt-6 rounded-md p-4 border-gray-500 ">
       <h3 className="font-bold text-2xl">{post.title}</h3>
