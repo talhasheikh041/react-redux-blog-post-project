@@ -1,16 +1,16 @@
 import useAppSelector from "../../hooks/useAppSelector"
 
-import { selectPostIds, getPostsError, getPostsStatus } from "./postsSlice"
+import { selectPostIds, useGetPostsQuery } from "./postsSlice"
 
 import PostsExcerpt from "./PostsExcerpt"
 
 const PostsList = () => {
+  const { isLoading, isSuccess, isError, error } = useGetPostsQuery()
+
   const orderedPostsIds = useAppSelector(selectPostIds)
-  const postStatus = useAppSelector(getPostsStatus)
-  const error = useAppSelector(getPostsError)
 
   let content: React.ReactNode
-  if (postStatus === "loading") {
+  if (isLoading) {
     content = (
       <svg
         className="animate-spin -ml-1 mr-3 h-10 text-white block mx-auto mt-16 w-full"
@@ -33,12 +33,16 @@ const PostsList = () => {
         ></path>
       </svg>
     )
-  } else if (postStatus === "succeeded") {
+  } else if (isSuccess) {
     content = orderedPostsIds.map((postId) => (
       <PostsExcerpt key={postId} postId={postId} />
     ))
-  } else if (postStatus === "failed") {
-    content = <p>{error}</p>
+  } else if (isError) {
+    if ("status" in error) {
+      content = (
+        <p>{"error" in error ? error.error : JSON.stringify(error.data)}</p>
+      )
+    }
   }
 
   return <section className="mt-8 px-8 xl:px-36">{content}</section>

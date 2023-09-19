@@ -1,18 +1,17 @@
 import { useState } from "react"
 
-import useAppDispatch from "../../hooks/useAppDispatch"
 import useAppSelector from "../../hooks/useAppSelector"
-import { addNewPost } from "./postsSlice"
 import { selectAllUsers } from "../users/usersSlice"
 import { useNavigate } from "react-router-dom"
+import { useAddNewPostMutation } from "./postsSlice"
 
 const AddPostForm = () => {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
-  const [userId, setUserId] = useState<number | null>(null)
-  const [addRequestStatus, setAddRequestStatus] = useState("idle")
+  const [userId, setUserId] = useState<number | "">("")
 
-  const dispatch = useAppDispatch()
+  const [addNewPost, { isLoading }] = useAddNewPostMutation()
+
   const navigate = useNavigate()
   const users = useAppSelector(selectAllUsers)
 
@@ -25,23 +24,18 @@ const AddPostForm = () => {
   const onAuthorChanged = (e: React.ChangeEvent<HTMLSelectElement>) =>
     setUserId(Number(e.target.value))
 
-  const canSavePost =
-    [title, content, userId].every(Boolean) && addRequestStatus === "idle"
+  const canSavePost = [title, content, userId].every(Boolean) && !isLoading
 
-  const onSavePostClicked = () => {
+  const onSavePostClicked = async () => {
     if (canSavePost) {
       try {
-        setAddRequestStatus("pending")
-        userId &&
-          dispatch(addNewPost({ title, body: content, userId })).unwrap()
+        userId && (await addNewPost({ title, body: content, userId }).unwrap())
         setTitle("")
         setContent("")
-        setUserId(null)
+        setUserId("")
         navigate("/")
       } catch (err) {
         console.error("Failed to save the post", err)
-      } finally {
-        setAddRequestStatus("idle")
       }
     }
   }

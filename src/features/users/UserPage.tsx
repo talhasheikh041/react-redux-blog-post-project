@@ -1,6 +1,6 @@
 import { RootStateType } from "../../app/store"
 import useAppSelector from "../../hooks/useAppSelector"
-import { selectPostsByUser } from "../posts/postsSlice"
+import { useGetPostsByUserIdQuery } from "../posts/postsSlice"
 import { selectUserById } from "./usersSlice"
 import { useParams, Link } from "react-router-dom"
 
@@ -10,28 +10,39 @@ const UserPage = () => {
     selectUserById(state, Number(userId))
   )
 
-  const userPosts = useAppSelector((state: RootStateType) =>
-    selectPostsByUser(state, Number(userId))
-  )
+  const {
+    data: postsForUser,
+    isLoading,
+    isError,
+    isSuccess,
+    error,
+  } = useGetPostsByUserIdQuery(Number(userId))
 
-  const userPostTitles = userPosts.map((userPost) => {
-    return (
-      <li key={userPost.id}>
-        <Link
-          className="hover:underline hover:font-semibold"
-          to={`/post/${userPost.id}`}
-        >
-          {userPost.title}
-        </Link>
-      </li>
-    )
-  })
+  let content
+  if (isLoading) {
+    content = <p>Loading ...</p>
+  } else if (isSuccess) {
+    const { ids, entities } = postsForUser
+    content = ids.map((id) => {
+      return (
+        <li key={id}>
+          <Link to={`/post/${id}`}>{entities[id]?.title}</Link>
+        </li>
+      )
+    })
+  } else if (isError) {
+    if ("status" in error) {
+      content = (
+        <p>{"error" in error ? error.error : JSON.stringify(error.data)}</p>
+      )
+    }
+  }
 
   return (
     <section>
       <h2 className="text-4xl font-bold xl:text-6xl">{user?.name}</h2>
       <ul className="mt-8 list-decimal list-inside flex flex-col gap-1 xl:text-lg tracking-wide">
-        {userPostTitles}
+        {content}
       </ul>
     </section>
   )
