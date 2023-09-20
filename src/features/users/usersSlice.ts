@@ -1,40 +1,60 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
+import {
+  createEntityAdapter,
+  createSelector,
+  EntityAdapter,
+  EntityState,
+} from "@reduxjs/toolkit"
+import { apiSlice } from "../api/apiSlice"
 import { RootStateType } from "../../app/store"
-import axios, { isAxiosError } from "axios"
-
-const USERS_URL = "https://jsonplaceholder.typicode.com/users"
 
 type UserStateType = {
   id: number
   name: string
 }
 
-const initialState: UserStateType[] = []
+const usersAdapter: EntityAdapter<UserStateType> = createEntityAdapter()
 
-export const fetchUsers = createAsyncThunk("users/fetchUsers", async () => {
-  try {
-    const response = await axios.get(USERS_URL)
-    return response.data
-  } catch (err) {
-    if (isAxiosError(err)) {
-      return err.message
-    }
-  }
+const initialState: EntityState<UserStateType> = usersAdapter.getInitialState()
+
+export const extendedUsersApiSlice = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    fetchUsers: builder.query<EntityState<UserStateType>, void>({
+      query: () => "/users",
+      transformResponse: (responseData: UserStateType[]) => {
+        return usersAdapter.setAll(initialState, responseData)
+      },
+    }),
+  }),
 })
 
-const usersSlice = createSlice({
-  name: "users",
-  initialState,
-  reducers: {},
-  extraReducers: (builder) => {
-    builder.addCase(fetchUsers.fulfilled, (_, action) => {
-      return action.payload
-    })
-  },
-})
+export const { useFetchUsersQuery } = extendedUsersApiSlice
 
-export const selectAllUsers = (state: RootStateType) => state.users
-export const selectUserById = (state: RootStateType, userId: number) =>
-  state.users.find((user) => user.id === userId)
+export const selectUsersResult =
+  extendedUsersApiSlice.endpoints.fetchUsers.select()
 
-export default usersSlice.reducer
+const selectUsersData = createSelector(
+  selectUsersResult,
+  (userResult) => userResult.data
+)
+
+export const { selectAll: selectAllUsers, selectById: selectUserById } =
+  usersAdapter.getSelectors(
+    (state: RootStateType) => selectUsersData(state) ?? initialState
+  )
+
+// const usersSlice = createSlice({
+//   name: "users",
+//   initialState,
+//   reducers: {},
+//   extraReducers: (builder) => {
+//     builder.addCase(fetchUsers.fulfilled, (_, action) => {
+//       return action.payload
+//     })
+//   },
+// })
+
+// export const selectAllUsers = (state: RootStateType) => state.users
+// export const selectUserById = (state: RootStateType, userId: number) =>
+//   state.users.find((user) => user.id === userId)
+
+// export default usersSlice.reducer
